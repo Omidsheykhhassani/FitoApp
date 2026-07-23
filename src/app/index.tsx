@@ -15,7 +15,7 @@ export default function Index() {
     appMenuContent = (
       <>
         {CardData.map((card) => {
-          return <MiniappCard name={card.name} icon={card.icon} key={card.name} />;
+          return <MiniappCard name={card.name} icon={card.icon} href={card.href} key={card.name} />;
         })}
       </>
     );

@@ -1,19 +1,27 @@
+import { Href, useRouter } from "expo-router";
 import {
   Image,
+  ImageSourcePropType,
   Pressable,
   Text,
   View,
-  ImageSourcePropType,
 } from "react-native";
 
 type MiniappCardProps = {
   name: string;
   icon: ImageSourcePropType;
+  href: Href;
 };
 
-export default function MiniappCard({ name, icon }: MiniappCardProps) {
+export default function MiniappCard({ name, icon, href }: MiniappCardProps) {
+  const router = useRouter();
+
+  function handleNavigate() {
+    router.push(href)
+  }
+
   return (
-    <Pressable className="w-1/2 p-2">
+    <Pressable className="w-1/2 p-2" onPress={handleNavigate}>
       {({ pressed }) => (
         <View
           className="items-center justify-center rounded-3xl bg-primary-100 p-6 gap-8"

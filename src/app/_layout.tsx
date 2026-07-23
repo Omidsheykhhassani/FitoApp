@@ -1,6 +1,8 @@
 import { Stack } from "expo-router";
 import { useFonts } from "expo-font";
 
+import "./global.css";
+
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     Rubik: require("../../assets/fonts/Rubik-Regular.ttf"),
@@ -22,6 +24,7 @@ export default function RootLayout() {
   return (
     <Stack>
       <Stack.Screen name="index" options={{ title: "FitoApp" }} />
+      <Stack.Screen name="202020Clock" options={{ title: "20-20-20 Clock" }} />
     </Stack>
   );
 }

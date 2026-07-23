@@ -3,11 +3,7 @@ const { withNativeWind } = require("nativewind/metro");
 
 const config = getDefaultConfig(__dirname);
 
-module.exports = withNativeWind(
-  /** @type {import("metro-config").MetroConfig} */ (
-    /** @type {unknown} */ (config)
-  ),
-  /** @type {Parameters<typeof withNativeWind>[1]} */ (
-    /** @type {unknown} */ ({ input: "./src/app/global.css" })
-  ),
-);
+// @ts-expect-error Expo Metro and NativeWind expose incompatible Metro types
+module.exports = withNativeWind(config, {
+  input: "./src/app/global.css",
+});
