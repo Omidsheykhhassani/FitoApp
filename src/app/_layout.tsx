@@ -1,9 +1,17 @@
 import { Stack } from "expo-router";
+
 import { useFonts } from "expo-font";
 
 import "./global.css";
+import { useEffect } from "react";
+
+import { setupAlarmNotifications } from "@/services/notification";
 
 export default function RootLayout() {
+  useEffect(() => {
+    setupAlarmNotifications();
+  }, []);
+
   const [fontsLoaded] = useFonts({
     Rubik: require("../../assets/fonts/Rubik-Regular.ttf"),
     "Rubik-Light": require("../../assets/fonts/Rubik-Light.ttf"),

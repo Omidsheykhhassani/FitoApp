@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, Text } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 type ButtonProps = {
   children: React.ReactNode;
@@ -8,18 +8,29 @@ type ButtonProps = {
 
 export default function Button({ children, onPress }: ButtonProps) {
   return (
-    <Pressable
-      onPress={onPress}
-      className="mx-2 my-4 w-full items-center rounded-xl bg-primary-500 px-2 py-4"
+    <View
+      className="mx-2 my-4 w-full rounded-xl"
+      style={{
+        overflow: "hidden",
+      }}
     >
-      <Text
-        className="text-2xl text-white"
-        style={{
-          fontFamily: "Rubik-Bold",
+      <Pressable
+        android_ripple={{
+          color: "#ad2525",
+          borderless: false,
         }}
+        onPress={onPress}
+        className="w-full items-center bg-primary-500 px-2 py-4"
       >
-        {children}
-      </Text>
-    </Pressable>
+        <Text
+          className="text-2xl text-white"
+          style={{
+            fontFamily: "Rubik-Bold",
+          }}
+        >
+          {children}
+        </Text>
+      </Pressable>
+    </View>
   );
 }

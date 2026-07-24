@@ -1,29 +1,64 @@
 import { useEffect, useState } from "react";
 
 import Button from "@/components/Button/Button";
+import Modal from "@/components/Modal/Modal";
 
-import { Text, View } from "react-native";
+import { Text, Vibration, View } from "react-native";
 
-type Props = {};
+import { useAudioPlayer } from "expo-audio";
+
+import * as Haptics from "expo-haptics";
+
+import Svg, { Circle } from "react-native-svg";
+
+import * as Notifications from "expo-notifications";
 
 type ClockStateType =
   "stopped" | "session" | "sessionFinished" | "break" | "breakFinished";
 
-const SESSION_DURATION = 20; // seconds temporarily
-const BREAK_DURATION = 10; // seconds temporarily
+const SESSION_DURATION = 20;
+const BREAK_DURATION = 10;
 
-export default function ClockApp({}: Props) {
+const CIRCUMFERENCE = 2 * Math.PI * 48;
+
+export default function ClockApp() {
   const [clockState, setClockState] = useState<ClockStateType>("stopped");
 
   const [endTime, setEndTime] = useState<number | null>(null);
 
-  const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [remainingSeconds, setRemainingSeconds] = useState(SESSION_DURATION);
 
-  function startTimer(
+  const [notificationId, setNotificationId] = useState<string | null>(null);
+
+  const alarmPlayer = useAudioPlayer(
+    require("../../../assets/sound/alarm.wav"),
+  );
+
+  async function startTimer(
     durationInSeconds: number,
     nextState: "session" | "break",
   ) {
     const newEndTime = Date.now() + durationInSeconds * 1000;
+
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: nextState === "session" ? "Session Complete" : "Break Complete",
+        body:
+          nextState === "session"
+            ? "Your session is over. Time for a break."
+            : "Your break is over. Ready for a new session?",
+        sound: "alarm.wav",
+        data: {
+          type: nextState === "session" ? "sessionFinished" : "breakFinished",
+        },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: new Date(newEndTime),
+      },
+    });
+
+    setNotificationId(id);
 
     setEndTime(newEndTime);
     setClockState(nextState);
@@ -31,15 +66,40 @@ export default function ClockApp({}: Props) {
   }
 
   function startSession() {
+    stopAlarm();
     startTimer(SESSION_DURATION, "session");
   }
 
   function startBreak() {
+    stopAlarm();
     startTimer(BREAK_DURATION, "break");
   }
 
-  function stopClock() {
+  async function stopClock() {
+    stopAlarm();
 
+    if (notificationId) {
+      await Notifications.cancelScheduledNotificationAsync(notificationId);
+
+      setNotificationId(null);
+    }
+
+    setClockState("stopped");
+    setEndTime(null);
+    setRemainingSeconds(SESSION_DURATION);
+  }
+
+  async function playAlarm() {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+
+    alarmPlayer.loop = true;
+    await alarmPlayer.seekTo(0);
+    alarmPlayer.play();
+  }
+
+  async function stopAlarm() {
+    alarmPlayer.pause();
+    await alarmPlayer.seekTo(0);
   }
 
   useEffect(() => {
@@ -58,6 +118,8 @@ export default function ClockApp({}: Props) {
 
       if (remaining === 0) {
         clearInterval(interval);
+
+        playAlarm();
 
         if (clockState === "session") {
           setClockState("sessionFinished");
@@ -83,9 +145,16 @@ export default function ClockApp({}: Props) {
   }
 
   const totalDuration =
-    clockState === "session" ? SESSION_DURATION : BREAK_DURATION;
+    clockState === "session" || clockState === "sessionFinished"
+      ? SESSION_DURATION
+      : BREAK_DURATION;
 
-  const progress = remainingSeconds / totalDuration;
+  const progress =
+    clockState === "session" || clockState === "break"
+      ? remainingSeconds / totalDuration
+      : 1;
+
+  const strokeDashoffset = CIRCUMFERENCE * (1 - progress);
 
   let buttonText: string;
 
@@ -103,46 +172,57 @@ export default function ClockApp({}: Props) {
       buttonText = "Start";
   }
 
+  function testVibration() {
+    Vibration.vibrate(1000);
+    console.log("firing");
+  }
+
   return (
     <View className="flex-1 justify-center items-center">
-      <View className="w-full mx-4 border-4 border-primary-500 bg-background-500 rounded-full z-10">
-        <View className="justify-center items-center w-full border border-text-500 aspect-square rounded-full">
+      <View className="relative aspect-square w-full mx-4">
+        <View className="absolute inset-0 m-2 justify-center items-center rounded-full border border-text-500 bg-background-500">
           <Text
             className="text-center text-text-500 text-4xl"
-            style={{
-              fontFamily: "Rubik-SemiBold",
-            }}
+            style={{ fontFamily: "Rubik-SemiBold" }}
           >
             {formatTime(remainingSeconds)}
           </Text>
         </View>
+        <Svg className="absolute inset-0" viewBox="0 0 100 100">
+          <Circle
+            cx="50"
+            cy="50"
+            r="48"
+            fill="none"
+            stroke="#ff9696"
+            strokeWidth="2"
+            strokeDasharray={CIRCUMFERENCE}
+            strokeDashoffset={strokeDashoffset}
+          />
+        </Svg>
       </View>
       {clockState === "stopped" && (
         <Button onPress={startSession}>Start The Clock</Button>
       )}
-      {clockState === "sessionFinished" && (
-        <Button onPress={startBreak}>Start Break</Button>
+      {(clockState === "session" || clockState === "sessionFinished") && (
+        <Button onPress={stopClock}>Stop The Session</Button>
+      )}
+      {(clockState === "break" || clockState === "breakFinished") && (
+        <Button onPress={stopClock}>Stop The Break</Button>
       )}
       {clockState === "sessionFinished" && (
-        <View className="absolute inset-0 z-50 items-center justify-center bg-black/50">
-          <View className="rounded-3xl bg-background-500 p-6">
-            <Text>Session is over</Text>
-
-            <Button onPress={startBreak}>Start Break</Button>
-          </View>
-        </View>
+        <Modal title="Session is over!">
+          <Button onPress={startBreak}>Start Break</Button>
+          <Button onPress={stopClock}>Stop The Clock</Button>
+        </Modal>
       )}
       {clockState === "breakFinished" && (
-        <View className="absolute inset-0 z-50 items-center justify-center bg-black/50">
-          <View className="rounded-3xl bg-background-500 p-6">
-            <Text>Break is over</Text>
-
-            <Button onPress={startSession}>Start New Session</Button>
-
-            <Button onPress={stopClock}>Stop The Clock</Button>
-          </View>
-        </View>
+        <Modal title="Break is over!">
+          <Button onPress={startSession}>Start New Session</Button>
+          <Button onPress={stopClock}>Stop The Clock</Button>
+        </Modal>
       )}
+      <Button onPress={testVibration}>Test Vibration</Button>
     </View>
   );
 }
